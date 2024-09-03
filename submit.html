@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<body>
+    <script type="text/javascript">
+        window.onload = function() {
+            var host = window.location.host;
+            var form = document.getElementById("configForm");
+            form.action = "http://" + host + "/configure";
+        };
+    </script>
+    <form id="configForm" method="post">
+        SSID: <input type="text" name="wifissid" /><br />
+        Password: <input type="password" name="wifipass" /><br />
+        MQTT server addr: <input type="text" name="mqttsvraddr" value="mqtt://broker.mqttgo.io" /><br />
+        MQTT pub topic: <input type="text" name="mqttpubtopic" value="test1/output" /><br />
+        MQTT sub topic: <input type="text" name="mqttsubtopic" value="test1/input" /><br />
+        NTP server addr: <input type="text" name="ntpsvraddr" value="time.stdtime.gov.tw" /><br />
+        Format: <input type="checkbox" id="toformatto" name="toformatto" /><br />
+        Factory Reset: <input type="checkbox" id="factoryreset" name="factoryreset" /><br />
+        Hostname: <input type="text" name="hostname" value="esp32f3" /><br />
+        <input type="submit" value="Submit change">
+    </form>
+    <form method="post" id="uploadForm" enctype="multipart/form-data">
+        firmware binary: <input id="fileInput" type="file" name="file"><br>
+        <input type="submit" value="Submit OTA" />
+    </form>
+    <div id="prg">0%</div>
+    <script>
+        var prg = document.getElementById('prg');
+        var form = document.getElementById('uploadForm');
+        var boundary = "-----my_custom_ota_boundary-----";
+        var fileInput = document.getElementById('fileInput');
+        var file;
+        var fileContent;
+        var fc_uint8Array;
+        var strFrom_fc_uint8Array = "";
+        fileInput.addEventListener('change', function(event) {
+            file = event.target.files[0];
+            if (file) {
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    fileContent = e.target.result;
+                    console.log('File content:', fileContent);
+                    // Convert binary data to Uint8Array
+                    fc_uint8Array = new Uint8Array(fileContent);
+
+                    // Check if the first character is 0xE9
+                    if (fc_uint8Array[0] === 0xE9) {
+                        console.log('The first character is 0xE9');
+                    } else {
+                        console.log('The first character is not 0xE9');
+                    }
+
+                    // Convert the Uint8Array to a string
+                    strFrom_fc_uint8Array = "";
+                    for (var i = 0; i < fc_uint8Array.length; i++) {
+                        strFrom_fc_uint8Array += String.fromCharCode(fc_uint8Array[i]);
+                    }
+                };
+                if (file.name.endsWith('.bin')) {
+                    // reader.readAsBinaryString(file);
+                    reader.readAsArrayBuffer(file);
+                } else {
+                    reader.readAsText(file);// You can also use readAsArrayBuffer, readAsBinaryString, or readAsDataURL depending on your needs
+                }
+            } else {
+                console.log('No file selected');
+            }
+        });
+        form.addEventListener('submit', function(event) {
+            event.preventDefault(); // Prevent the default form submission
+            var data = new FormData(form);
+            var reader = new FileReader();
+            var body = boundary + "\r\n" +
+                'Content-Disposition: form-data; name="file"; filename="'+file.name+'"\r\n' +
+                "Content-Type: application/octet-stream\r\n\r\n" +
+                strFrom_fc_uint8Array + "\r\n" +
+                boundary;
+            body = fileContent;
+            var blob = new Blob([body], { type: "application/octet-stream" });
+            var hosts = Array("192.168.1.114","192.168.4.1");
+            for (host of hosts) {
+                var req = new XMLHttpRequest();
+                req.open('POST', 'http://'+ host +'/ota?fsize=' + file.size.toString(), true);  
+                // req.setRequestHeader("Content-Type", "application/octet-stream");
+                // req.setRequestHeader("Content-Type", "multipart/form-data");
+                req.addEventListener("load", transferComplete);
+                req.addEventListener("error", transferFailed);
+                req.upload.addEventListener('progress', p=>{
+                    let w = Math.round(p.loaded/p.total*100) + '%';
+                        if(p.lengthComputable){
+                            prg.innerHTML = w;
+                        }
+                });
+                req.send(blob); //data
+            }
+        });
+        // https://docs.espressif.com/projects/esp-idf/en/v5.1.4/esp32/api-reference/protocols/esp_http_server.html
+        function transferComplete(evt) {
+            console.log("The transfer is complete.");
+        }
+        function transferFailed(evt) {
+            console.log("An error occurred while transferring the file.");
+        }
+    </script>
+</body>
+</html>
+
+

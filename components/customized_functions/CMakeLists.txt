@@ -1,0 +1,2 @@
+idf_component_register(INCLUDE_DIRS "include"
+PRIV_REQUIRES uthash spi_flash bootloader_support esp_http_server app_update esp_wifi nvs_flash customized_functions)

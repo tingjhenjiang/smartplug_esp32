@@ -1,0 +1,27 @@
+menu "Example Configuration"
+
+    config ESP_MAXIMUM_RETRY
+        int "Number of Maximum Retries"
+        default 5
+        help
+            Number of maximum retries to connect to an accesspoint.
+
+    config ESP_AP_SSID
+        string "WiFi AP SSID"
+        default "ESP32_fallback_AP"
+        help
+            Set the SSID (network name) when oprating as an AP.
+
+    config ESP_AP_CHANNEL
+        int "WiFi AP Channel"
+        range 1 13
+        default 1
+        help
+            WiFi channel (network channel) for the example to use.
+
+    config ESP_MAX_STA_CONN
+        int "Maximal STA connections"
+        default 4
+        help
+            Max number of the STA connects to AP.
+endmenu
